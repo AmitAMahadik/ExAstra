@@ -37,14 +37,32 @@ struct ProfileView: View {
             }
 
             Section {
-                NavigationLink("Continue") {
-                    FocusView()
+                NavigationLink(value: "continue") {
+                    Text("Continue")
                 }
                 .disabled(!canContinue)
             } footer: {
                 Text("Enter at least your name and place of birth to continue.")
             }
+            
+            Section {
+                Button(role: .destructive) {
+                    state.resetProfile()
+                } label: {
+                    Text("Reset Profile")
+                }
+            }
         }
         .navigationTitle("Profile")
+        .navigationDestination(for: String.self) { route in
+            if route == "continue" {
+                FocusView()
+                    .onAppear {
+                        state.saveProfile()
+                    }
+            } else {
+                EmptyView()
+            }
+        }
     }
 }

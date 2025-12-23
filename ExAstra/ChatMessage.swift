@@ -14,6 +14,6 @@ struct ChatMessage: Identifiable, Equatable {
 
     let id = UUID()
     let role: Role
-    let content: String
+    var content: String
     let createdAt: Date = Date()
 }

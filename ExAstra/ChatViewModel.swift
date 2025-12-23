@@ -20,7 +20,6 @@ final class ChatViewModel: ObservableObject {
     @Published var errorText: String? = nil
 
     private let service: OpenAIService
-
     private var profileContext: String = ""
     private var focusHint: String = ""
 
@@ -67,6 +66,11 @@ final class ChatViewModel: ObservableObject {
 
         draft = ""
         messages.append(.init(role: .user, content: text))
+        
+        // Create a placeholder assistant message that we will “fill” as tokens stream in
+        messages.append(.init(role: .assistant, content: ""))
+        let assistantIndex = messages.count - 1
+        
         isSending = true
         defer { isSending = false }
 
@@ -74,7 +78,7 @@ final class ChatViewModel: ObservableObject {
             let system = """
             You are a helpful astrologer assistant blending Western, Vedic, and Chinese astrology.
             Provide thoughtful, actionable guidance. Be clear about uncertainty and avoid absolute claims.
-            Keep responses concise but useful. Ask a clarifying question if the user’s query is ambiguous.
+            Keep responses very concise but useful. Ask a clarifying question if the user’s query is ambiguous.
 
             User Profile:
             \(profileContext)
@@ -102,19 +106,26 @@ final class ChatViewModel: ObservableObject {
                 model: .gpt5Mini
             )
 
-            let response = try await service.startChat(parameters: params)
+            // ✅ STREAM
+            let stream = try await service.startStreamedChat(parameters: params)  //  [oai_citation:1‡GitHub](https://github.com/jamesrochabrun/SwiftOpenAI)
+            for try await chunk in stream {
+                let delta = chunk.choices?.first?.delta?.content ?? ""
+                guard !delta.isEmpty else { continue }
+                messages[assistantIndex].content += delta
+            }
 
-            let reply =
-            response.choices?.first?.message?.content
-                ?? "I couldn’t generate a response."
-
-            messages.append(.init(role: .assistant, content: reply))
-            
+            // Optional: tidy if model returns whitespace only
+            if messages[assistantIndex].content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                messages[assistantIndex].content = "I couldn’t generate a response."
+            }
 
         } catch APIError.responseUnsuccessful(let description, let statusCode) {
             errorText = "Request failed (\(statusCode)): \(description)"
+            // Optional: replace placeholder with error
+            messages[assistantIndex].content = "Sorry—something went wrong."
         } catch {
             errorText = error.localizedDescription
+            messages[assistantIndex].content = "Sorry—something went wrong."
         }
     }
 }

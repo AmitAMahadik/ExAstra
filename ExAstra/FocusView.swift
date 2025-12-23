@@ -5,7 +5,6 @@
 //  Created by Mahadik, Amit on 12/22/25.
 //
 
-
 // FocusView.swift
 import SwiftUI
 
@@ -25,10 +24,14 @@ struct FocusView: View {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                     ForEach(FocusArea.allCases) { area in
                         FocusCard(
-                            title: area.rawValue,
+                            area: area,
                             isSelected: state.focusArea == area
                         )
-                        .onTapGesture { state.focusArea = area }
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
+                                state.focusArea = area
+                            }
+                        }
                     }
                 }
                 .padding(.top, 8)
@@ -53,30 +56,19 @@ struct FocusView: View {
     }
 }
 
-private struct FocusCard: View {
-    let title: String
-    let isSelected: Bool
-
-    var body: some View {
-        VStack(spacing: 10) {
-            Text(title)
-                .font(.headline)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            Text(isSelected ? "Selected" : "Tap to select")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 90)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(isSelected ? Color.blue.opacity(0.15) : Color(.secondarySystemBackground))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(isSelected ? Color.blue.opacity(0.7) : Color.clear, lineWidth: 1.5)
-        )
+#Preview("FocusView – Empty") {
+    NavigationStack {
+        FocusView()
+            .environmentObject(AppState())
     }
 }
+
+#Preview("FocusView – With Selection") {
+    let state = AppState()
+    state.focusArea = .health
+    return NavigationStack {
+        FocusView()
+            .environmentObject(state)
+    }
+}
+

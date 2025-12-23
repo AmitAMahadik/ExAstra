@@ -8,7 +8,7 @@
 import Foundation
 import Combine
 
-enum Gender: String, CaseIterable, Identifiable {
+enum Gender: String, CaseIterable, Identifiable, Codable {
     case male = "Male"
     case female = "Female"
     case nonBinary = "Non-binary"
@@ -17,7 +17,7 @@ enum Gender: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-enum FocusArea: String, CaseIterable, Identifiable {
+enum FocusArea: String, CaseIterable, Identifiable, Codable {
     case career = "Career"
     case relationships = "Relationships"
     case wealth = "Wealth"
@@ -45,6 +45,68 @@ final class AppState: ObservableObject {
 
     // Screen 2
     @Published var focusArea: FocusArea? = nil
+
+    // MARK: - Persistence
+    private let profileDefaultsKey = "AppState.profile"
+
+    private struct PersistedProfile: Codable {
+        var name: String
+        var gender: Gender
+        var dob: Date
+        var placeOfBirth: String
+        var timeOfBirth: Date
+        var focusArea: FocusArea?
+    }
+
+    init() {
+        loadProfile()
+    }
+
+    func saveProfile() {
+        let profile = PersistedProfile(
+            name: name,
+            gender: gender,
+            dob: dob,
+            placeOfBirth: placeOfBirth,
+            timeOfBirth: timeOfBirth,
+            focusArea: focusArea
+        )
+        do {
+            let data = try JSONEncoder().encode(profile)
+            UserDefaults.standard.set(data, forKey: profileDefaultsKey)
+        } catch {
+            // Silently ignore encoding errors in production
+            // print("Failed to save profile: \(error)")
+        }
+    }
+
+    func resetProfile() {
+        // Remove any persisted profile first
+        UserDefaults.standard.removeObject(forKey: profileDefaultsKey)
+
+        // Reset in-memory values
+        name = ""
+        gender = .preferNotToSay
+        dob = Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date()
+        placeOfBirth = ""
+        timeOfBirth = Date()
+        focusArea = nil
+    }
+
+    private func loadProfile() {
+        guard let data = UserDefaults.standard.data(forKey: profileDefaultsKey) else { return }
+        do {
+            let decoded = try JSONDecoder().decode(PersistedProfile.self, from: data)
+            name = decoded.name
+            gender = decoded.gender
+            dob = decoded.dob
+            placeOfBirth = decoded.placeOfBirth
+            timeOfBirth = decoded.timeOfBirth
+            focusArea = decoded.focusArea
+        } catch {
+            // print("Failed to load profile: \(error)")
+        }
+    }
 
     // Optional: keep a stable “profile summary” for prompt building
     func profileSummary() -> String {
