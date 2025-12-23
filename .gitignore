@@ -17,7 +17,7 @@ DerivedData/
 *.xcodeproj/xcuserdata/
 
 # Accidental local Xcode project
-Swift OpenAI.xcodeproj/
+ExAstra.xcodeproj/
 
 
 # User-specific settings
