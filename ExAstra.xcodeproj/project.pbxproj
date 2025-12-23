@@ -6,13 +6,30 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		BC614C142EFA5675000A68FB /* SwiftOpenAI in Frameworks */ = {isa = PBXBuildFile; productRef = BC614C132EFA5675000A68FB /* SwiftOpenAI */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		BC614C022EFA5583000A68FB /* ExAstra.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ExAstra.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		BC614C342EFA6767000A68FB /* Exceptions for "ExAstra" folder in "ExAstra" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = BC614C012EFA5583000A68FB /* ExAstra */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		BC614C042EFA5583000A68FB /* ExAstra */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BC614C342EFA6767000A68FB /* Exceptions for "ExAstra" folder in "ExAstra" target */,
+			);
 			path = ExAstra;
 			sourceTree = "<group>";
 		};
@@ -23,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BC614C142EFA5675000A68FB /* SwiftOpenAI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +83,7 @@
 			);
 			name = ExAstra;
 			packageProductDependencies = (
+				BC614C132EFA5675000A68FB /* SwiftOpenAI */,
 			);
 			productName = ExAstra;
 			productReference = BC614C022EFA5583000A68FB /* ExAstra.app */;
@@ -94,6 +113,9 @@
 			);
 			mainGroup = BC614BF92EFA5583000A68FB;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				BC614C122EFA5675000A68FB /* XCRemoteSwiftPackageReference "SwiftOpenAI" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = BC614C032EFA5583000A68FB /* Products */;
 			projectDirPath = "";
@@ -127,6 +149,8 @@
 /* Begin XCBuildConfiguration section */
 		BC614C0D2EFA5585000A68FB /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = BC614C042EFA5583000A68FB /* ExAstra */;
+			baseConfigurationReferenceRelativePath = Secrets.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -191,6 +215,8 @@
 		};
 		BC614C0E2EFA5585000A68FB /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = BC614C042EFA5583000A68FB /* ExAstra */;
+			baseConfigurationReferenceRelativePath = Secrets.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -248,6 +274,8 @@
 		};
 		BC614C102EFA5585000A68FB /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = BC614C042EFA5583000A68FB /* ExAstra */;
+			baseConfigurationReferenceRelativePath = Secrets.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -256,6 +284,7 @@
 				DEVELOPMENT_TEAM = VHYDM4DE58;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ExAstra/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -280,6 +309,8 @@
 		};
 		BC614C112EFA5585000A68FB /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = BC614C042EFA5583000A68FB /* ExAstra */;
+			baseConfigurationReferenceRelativePath = Secrets.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -288,6 +319,7 @@
 				DEVELOPMENT_TEAM = VHYDM4DE58;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ExAstra/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -332,6 +364,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		BC614C122EFA5675000A68FB /* XCRemoteSwiftPackageReference "SwiftOpenAI" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/jamesrochabrun/SwiftOpenAI";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.4.7;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		BC614C132EFA5675000A68FB /* SwiftOpenAI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BC614C122EFA5675000A68FB /* XCRemoteSwiftPackageReference "SwiftOpenAI" */;
+			productName = SwiftOpenAI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = BC614BFA2EFA5583000A68FB /* Project object */;
 }

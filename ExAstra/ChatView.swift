@@ -1,0 +1,85 @@
+//
+//  ChatView.swift
+//  ExAstra
+//
+//  Created by Mahadik, Amit on 12/22/25.
+//
+
+
+// ChatView.swift
+import SwiftUI
+
+struct ChatView: View {
+    @EnvironmentObject private var state: AppState
+    @StateObject private var vm = ChatViewModel()
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 10) {
+                        ForEach(vm.messages) { msg in
+                            ChatBubble(role: msg.role, text: msg.content)
+                                .id(msg.id)
+                        }
+
+                        if let err = vm.errorText {
+                            Text("Error: \(err)")
+                                .foregroundStyle(.red)
+                                .font(.footnote)
+                                .padding(.top, 8)
+                        }
+                    }
+                    .padding(12)
+                }
+                .onChange(of: vm.messages.count) { _, _ in
+                    if let last = vm.messages.last {
+                        withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                    }
+                }
+            }
+
+            Divider()
+
+            HStack(spacing: 10) {
+                TextField("Ask your astrologer…", text: $vm.draft, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(1...4)
+
+                Button {
+                    Task { await vm.send() }
+                } label: {
+                    if vm.isSending { ProgressView() }
+                    else { Text("Send") }
+                }
+                .disabled(vm.isSending || vm.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            .padding(12)
+        }
+        .navigationTitle("Chat")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            let focusHint = state.focusArea?.systemHint ?? "General guidance."
+            vm.seedIfNeeded(profile: state.profileSummary(), focusHint: focusHint)
+        }
+    }
+}
+
+private struct ChatBubble: View {
+    let role: ChatMessage.Role
+    let text: String
+
+    var body: some View {
+        HStack {
+            if role == .assistant { Spacer(minLength: 30) }
+
+            Text(text)
+                .padding(12)
+                .background(role == .user ? Color.blue.opacity(0.15) : Color(.secondarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .frame(maxWidth: .infinity, alignment: role == .user ? .trailing : .leading)
+
+            if role == .user { Spacer(minLength: 30) }
+        }
+    }
+}

@@ -10,7 +10,19 @@ import SwiftData
 
 @main
 struct ExAstraApp: App {
-    var sharedModelContainer: ModelContainer = {
+    @StateObject private var state = AppState()
+    
+    var body: some Scene {
+        WindowGroup {
+            NavigationStack {
+                ProfileView()
+            }
+            .environmentObject(state)
+        }
+    }
+}
+    
+/*    var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
         ])
@@ -29,4 +41,4 @@ struct ExAstraApp: App {
         }
         .modelContainer(sharedModelContainer)
     }
-}
+}*/

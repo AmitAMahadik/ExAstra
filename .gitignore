@@ -1,0 +1,95 @@
+############################
+# macOS
+############################
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+############################
+# Xcode
+############################
+# Build products
+build/
+DerivedData/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+
+# Accidental local Xcode project
+Swift OpenAI.xcodeproj/
+
+
+# User-specific settings
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+
+# Xcode 15+ user data
+*.xcuserdatad
+
+############################
+# Swift Package Manager
+############################
+.build/
+.swiftpm/xcode/package.xcworkspace
+.swiftpm/configuration
+
+############################
+# Secrets / Environment
+############################
+Secrets.xcconfig
+*.env
+.env
+
+############################
+# Code Signing / Provisioning
+############################
+*.mobileprovision
+*.p12
+*.cer
+
+############################
+# Fastlane
+############################
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+
+############################
+# Playgrounds
+############################
+timeline.xctimeline
+playground.xcworkspace
+
+############################
+# Logs / Debug
+############################
+*.log
+
+############################
+# Coverage
+############################
+*.xccovreport
+*.xccovarchive
+
+############################
+# Carthage (if used)
+############################
+Carthage/Build/
+
+############################
+# CocoaPods (if used)
+############################
+Pods/
+Podfile.lock
+
+############################
+# Optional: keep workspace
+############################
+# Uncomment if you want to track workspace
+# !*.xcworkspace
+
