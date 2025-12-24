@@ -10,7 +10,7 @@ import SwiftUI
 struct FocusCard: View {
     let area: FocusArea
     let isSelected: Bool
-
+    
     private var iconName: String {
         switch area {
         case .career: return "focus_career"
@@ -19,29 +19,36 @@ struct FocusCard: View {
         case .health: return "focus_health"
         }
     }
-
+    
     var body: some View {
-        VStack {
-            Image(iconName)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 72, height: 72)
-                .shadow(color: .black.opacity(isSelected ? 0.10 : 0.04), radius: isSelected ? 10 : 4, x: 0, y: isSelected ? 6 : 2)
-        }
-        .frame(maxWidth: .infinity, minHeight: 120)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(isSelected ? Color.blue.opacity(0.14) : Color(.secondarySystemBackground))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(isSelected ? Color.blue.opacity(0.75) : Color.clear, lineWidth: 1.5)
-        )
-        .scaleEffect(isSelected ? 1.04 : 1.0)
-        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .animation(.spring(response: 0.32, dampingFraction: 0.78), value: isSelected)
-        .accessibilityLabel(Text(area.rawValue))
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        Image(iconName)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 96, height: 96)
+            .padding(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(
+                        isSelected ? Color.accentColor : Color.clear,
+                        lineWidth: 2
+                    )
+            )
+            .scaleEffect(isSelected ? 1.06 : 1.0)
+           /* .shadow(
+                color: .black.opacity(isSelected ? 0.18 : 0.0),
+                radius: isSelected ? 8 : 0,
+                x: 0,
+                y: isSelected ? 6 : 0
+            )*/
+            .contentShape(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+            )
+            .animation(
+                .spring(response: 0.30, dampingFraction: 0.75),
+                value: isSelected
+            )
+            .accessibilityLabel(Text(area.rawValue))
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
@@ -60,4 +67,3 @@ struct FocusCard: View {
             .environmentObject(state)
     }
 }
-
