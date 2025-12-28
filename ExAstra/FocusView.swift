@@ -9,6 +9,7 @@
 import SwiftUI
 import SwiftOpenAI
 import Combine
+import UIKit
 
 struct FocusView: View {
     @EnvironmentObject private var state: AppState
@@ -31,10 +32,6 @@ struct FocusView: View {
                         withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
                             state.focusArea = area
                         }
-                        vm.requestWeeklySummary(
-                            profile: state.profileSummary(),
-                            focusArea: area
-                        )
                     }
                 }
             }
@@ -51,6 +48,13 @@ struct FocusView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 16)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+        .onChange(of: state.focusArea) { _, newValue in
+            guard let area = newValue else { return }
+            vm.requestWeeklySummary(
+                profile: state.profileSummary(),
+                focusArea: area
+            )
         }
     }
 }
@@ -200,14 +204,14 @@ final class FocusSummaryViewModel: ObservableObject {
             """
 
             let user = """
-            Create a concise prediction for the next 7 days focused on: \(req.focusArea.rawValue).
+            Create a concise prediction, in the form of a haiku, for the next 7 days focused on: \(req.focusArea.rawValue).
 
             Profile details:
             \(req.profile)
 
             Output format:
             - Line 1: Overall theme
-            - Lines 2–4: Specific guidance
+            - Lines 2–4: Specific guidance in the form of a haiku
             """
 
             do {
@@ -216,20 +220,35 @@ final class FocusSummaryViewModel: ObservableObject {
                         .init(role: .system, content: .text(system)),
                         .init(role: .user, content: .text(user))
                     ],
-                    model: .gpt5Mini
+                    model: .gpt4turbo
                 )
 
                 // Stream response
                 self.summaryText = ""
 
                 let stream = try await self.service.startStreamedChat(parameters: params)
+                var lastUIUpdateTime = Date.distantPast
+                var buffer = ""
+
                 for try await chunk in stream {
                     if Task.isCancelled { return }
 
                     let delta = chunk.choices?.first?.delta?.content ?? ""
-                    if !delta.isEmpty {
-                        self.summaryText = (self.summaryText ?? "") + delta
+                    guard !delta.isEmpty else { continue }
+
+                    buffer += delta
+
+                    // Throttle UI updates to ~20 fps (every 50ms)
+                    if Date().timeIntervalSince(lastUIUpdateTime) > 0.05 {
+                        self.summaryText = (self.summaryText ?? "") + buffer
+                        buffer.removeAll(keepingCapacity: true)
+                        lastUIUpdateTime = Date()
                     }
+                }
+
+                // Flush any remaining buffered text
+                if !buffer.isEmpty {
+                    self.summaryText = (self.summaryText ?? "") + buffer
                 }
 
                 if Task.isCancelled { return }

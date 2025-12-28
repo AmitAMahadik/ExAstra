@@ -5,13 +5,13 @@
 //  Created by Mahadik, Amit on 12/22/25.
 //
 
-
 // ChatView.swift
 import SwiftUI
 
 struct ChatView: View {
     @EnvironmentObject private var state: AppState
     @StateObject private var vm = ChatViewModel()
+    @FocusState private var isInputFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,6 +37,10 @@ struct ChatView: View {
                         withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
                     }
                 }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    isInputFocused = false
+                }
             }
 
             Divider()
@@ -45,8 +49,28 @@ struct ChatView: View {
                 TextField("Ask your astrologer…", text: $vm.draft, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(1...4)
+                    .focused($isInputFocused)
+                    .submitLabel(.send)
+                    .onSubmit {
+                        let text = vm.draft.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !text.isEmpty, !vm.isSending else {
+                            isInputFocused = false
+                            return
+                        }
 
+                        isInputFocused = false
+                        Task { await vm.send() }
+                    }
+                    .toolbar {
+                        ToolbarItemGroup(placement: .keyboard) {
+                            Spacer()
+                            Button("Done") {
+                                isInputFocused = false
+                            }
+                        }
+                    }
                 Button {
+                    isInputFocused = false
                     Task { await vm.send() }
                 } label: {
                     if vm.isSending { ProgressView() }

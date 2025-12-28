@@ -103,7 +103,7 @@ final class ChatViewModel: ObservableObject {
             // Choose a model you have enabled. SwiftOpenAI supports .gpt4o (and others).
             let params = ChatCompletionParameters(
                 messages: chat,
-                model: .gpt5Mini
+                model: .gpt4omini
             )
 
             // ✅ STREAM
