@@ -7,6 +7,13 @@
 
 import Foundation
 
+// MARK: - Zodiac System
+
+public enum ZodiacSystem: String, Sendable, Codable {
+    case tropical = "tropical"
+    case siderealLahiri = "sidereal_lahiri"
+}
+
 // MARK: - Public models
 
 public struct MoonInfo: Sendable, Equatable {
@@ -76,9 +83,12 @@ public actor SwissEphemerisMCPClient {
     
     // MARK: Init
     
-    public init(baseURL: URL, timeoutSeconds: TimeInterval = 30) {
+    public init(
+        baseURL: URL = URL(string: "https://conapp-exastra.yellowrock-7298f3d8.westus.azurecontainerapps.io")!,
+        timeoutSeconds: TimeInterval = 30
+    ) {
         self.baseURL = baseURL
-        
+
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = timeoutSeconds
         config.timeoutIntervalForResource = timeoutSeconds
@@ -92,7 +102,12 @@ public actor SwissEphemerisMCPClient {
     ///   - datetimeUTC: Must be UTC (Date is absolute; you decide how you convert)
     ///   - latitude: decimal degrees
     ///   - longitude: decimal degrees (positive east, negative west)
-    public func fetchMoonInfo(datetimeUTC: Date, latitude: Double, longitude: Double) async throws -> MoonInfo {
+    public func fetchMoonInfo(
+        datetimeUTC: Date,
+        latitude: Double,
+        longitude: Double,
+        zodiac: ZodiacSystem = .siderealLahiri
+    ) async throws -> MoonInfo {
         try await ensureInitialized()
         
         let dt = Self.isoFormatter.string(from: datetimeUTC)
@@ -106,7 +121,8 @@ public actor SwissEphemerisMCPClient {
                 "arguments": [
                     "datetime": dt,
                     "latitude": latitude,
-                    "longitude": longitude
+                    "longitude": longitude,
+                    "zodiac" :zodiac.rawValue
                 ]
             ]
         ]
@@ -118,8 +134,18 @@ public actor SwissEphemerisMCPClient {
     }
     
     /// Convenience: just the Lunar Sign string (e.g., "Aquarius").
-    public func fetchLunarSign(datetimeUTC: Date, latitude: Double, longitude: Double) async throws -> String {
-        try await fetchMoonInfo(datetimeUTC: datetimeUTC, latitude: latitude, longitude: longitude).sign
+    public func fetchLunarSign(
+        datetimeUTC: Date,
+        latitude: Double,
+        longitude: Double,
+        zodiac: ZodiacSystem = .siderealLahiri
+    ) async throws -> String {
+        try await fetchMoonInfo(
+            datetimeUTC: datetimeUTC,
+            latitude: latitude,
+            longitude: longitude,
+            zodiac: zodiac
+        ).sign
     }
     
     /// If you ever receive "No valid session ID provided", call this to force re-init next request.

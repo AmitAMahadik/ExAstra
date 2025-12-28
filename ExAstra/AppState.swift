@@ -275,8 +275,8 @@ final class AppState: ObservableObject {
             ])
         }
 
-        // 1) Stable DOB (date-only)
-        let ymd = Self.ymdFromDateUTC(dob)
+        // Treat DOB as civil Y/M/D (avoid UTC shifting)
+        let ymd = Calendar(identifier: .gregorian).dateComponents([.year, .month, .day], from: dob)
 
         var birthCal = Calendar(identifier: .gregorian)
         birthCal.timeZone = birthTZ
@@ -284,9 +284,9 @@ final class AppState: ObservableObject {
         var comps = DateComponents()
         comps.calendar = birthCal
         comps.timeZone = birthTZ
-        comps.year = ymd.y
-        comps.month = ymd.m
-        comps.day = ymd.d
+        comps.year = ymd.year
+        comps.month = ymd.month
+        comps.day = ymd.day
         comps.hour = tobHour
         comps.minute = tobMinute
         comps.second = tobSecond
@@ -453,14 +453,15 @@ extension AppState {
     }
     
     
-    private static func ymdFromDateUTC(_ date: Date) -> (y: Int, m: Int, d: Int) {
+    static func ymdFromDateUTC(_ date: Date) -> (y: Int, m: Int, d: Int) {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(secondsFromGMT: 0)!  // stable reference
         let c = cal.dateComponents([.year, .month, .day], from: date)
         return (c.year ?? 1970, c.month ?? 1, c.day ?? 1)
     }
     
-    private static func dateFromYMDUTC(year: Int, month: Int, day: Int) -> Date {
+
+    static func dateFromYMDUTC(year: Int, month: Int, day: Int) -> Date {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(secondsFromGMT: 0)!
         
