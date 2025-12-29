@@ -18,8 +18,14 @@ struct ProfileView: View {
     @State private var isValidatingPlace: Bool = false
     @State private var validatedMapItem: MKMapItem? = nil
     @State private var placeValidationError: String? = nil
-    
+
     @State private var showResetConfirm = false
+
+    // Unified (in-unison) display values for the three signs
+    @State private var displayedMoonSign: String = "—"
+    @State private var displayedSunSign: String = "—"
+    @State private var displayedChineseSign: String = "—"
+    @State private var unifiedSignsError: String? = nil
 
     private var isPlaceValid: Bool {
         validatedMapItem != nil
@@ -27,7 +33,7 @@ struct ProfileView: View {
 
     var body: some View {
         Form {
-            Section("Your Details") {
+            Section("Profile") {
                 TextField("Name", text: $state.name)
                     .textContentType(.name)
 
@@ -50,7 +56,6 @@ struct ProfileView: View {
                     ),
                     displayedComponents: .hourAndMinute
                 )
-                // NOTE: Keeping your existing behavior. If you later want local-time picking, revisit this.
                 .environment(\.timeZone, TimeZone(secondsFromGMT: 0)!)
                 .onChange(of: state.timeOfBirthPickerDate) { _, _ in
                     invalidateValidatedPlaceAndDerivedResults()
@@ -78,14 +83,21 @@ struct ProfileView: View {
                 }
 
                 if let validatedMapItem {
-                    let name = validatedMapItem.name ?? state.placeOfBirth
                     let coordinate = validatedMapItem.location.coordinate
 
-                    
-                    Text("(\(coordinate.latitude, specifier: "%.2f"), \(coordinate.longitude, specifier: "%.2f")) • Time Zone: \(state.birthTimeZoneIdentifier ?? "Unknown")")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        Image(systemName: "globe")
+                            .symbolRenderingMode(.hierarchical)
 
+                        Text(formatLatLonDM(latitude: coordinate.latitude, longitude: coordinate.longitude))
+
+                        Image(systemName: "clock")
+                            .symbolRenderingMode(.hierarchical)
+
+                        Text(state.birthTimeZoneIdentifier ?? "Unknown")
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
                 } else if let placeValidationError, !placeValidationError.isEmpty {
                     Text(placeValidationError)
                         .font(.footnote)
@@ -97,100 +109,75 @@ struct ProfileView: View {
                 }
             }
 
-            // Single consolidated Signs section:
-            // - Moon Sign from Swiss Ephemeris (deterministic)
-            // - Solar + Chinese from AI (auto-run on validation)
             Section("Signs") {
-                LabeledContent("Moon (Ephemeris)") {
-                    Text(state.lunarSignDeterministic.isEmpty ? "—" : state.lunarSignDeterministic)
+                LabeledContent {
+                    Text(displayedMoonSign)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                } label: {
+                    Label("Lunar (Ephemeris)", systemImage: "moon.stars.fill")
+                        .symbolRenderingMode(.hierarchical)
                 }
 
-                if let signsResult {
-                    LabeledContent("Solar (Sun)") {
-                        Text(signsResult.solarSign)
-                    }
-                    LabeledContent("Chinese") {
-                        Text(signsResult.chineseSign)
-                    }
-                } else if let signsError, !signsError.isEmpty {
-                    Text(signsError)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                } else {
-                    Text(isPlaceValid
-                         ? "Calculating your Solar and Chinese signs…"
-                         : "Validate your place of birth to calculate your signs.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                LabeledContent {
+                    Text(displayedSunSign)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                } label: {
+                    Label("Sun Sign", systemImage: "sun.max.fill")
+                        .symbolRenderingMode(.hierarchical)
+                }
+
+                LabeledContent {
+                    Text(displayedChineseSign)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                } label: {
+                    Label("Chinese Zodiac", systemImage: "sparkles")
+                        .symbolRenderingMode(.hierarchical)
                 }
 
                 if isLookingUpSigns {
                     HStack(spacing: 10) {
                         ProgressView()
-                        Text("Looking up Solar & Chinese…")
+                        Text("Calculating signs…")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
+                } else if !isPlaceValid {
+                    Text("Validate your place of birth to calculate your signs.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
 
-                if let err = state.lunarSignDeterministicError, !err.isEmpty {
-                    Text(err)
+                if let unifiedSignsError, !unifiedSignsError.isEmpty {
+                    Text(unifiedSignsError)
                         .font(.footnote)
                         .foregroundStyle(.red)
                 }
-
-                // Optional: keep only a manual moon refresh (useful for debugging / retry)
-         /*       Button {
-                    Task { await state.refreshDeterministicLunarSign() }
-                } label: {
-                    HStack(spacing: 10) {
-                        if state.isRefreshingLunarSignDeterministic { ProgressView() }
-                        Text(state.isRefreshingLunarSignDeterministic
-                             ? "Computing Moon sign…"
-                             : (isPlaceValid ? "Refresh Moon Sign" : "Validate place of birth to continue"))
-                    }
-                }
-                .disabled(state.isRefreshingLunarSignDeterministic || !isPlaceValid) */
             }
 
-           /* Section {
-                Button(role: .destructive) {
-                    resetProfile()
-                } label: {
-                    Text("Reset Profile")
-                }
-            }*/
         }
-        .navigationTitle("Profile")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            // Reset (leading)
-            ToolbarItem(placement: .topBarLeading) {
-                Button(role: .destructive) {
-                    showResetConfirm = true
-                } label: {
-                    Image(systemName: "arrow.counterclockwise.circle.fill")
-                        .font(.title3)
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.red)
-                }
-                .accessibilityLabel("Reset profile")
+        .scrollDisabled(true)
+        .toolbar(.hidden, for: .navigationBar)
+        .safeAreaInset(edge: .bottom) {
+            Button(role: .destructive) {
+                showResetConfirm = true
+            } label: {
+                Text("Reset Profile")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.red)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .padding(.horizontal)
+                    .padding(.bottom, 8)
             }
-
-            // Validate (trailing)
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    validatePlace()
-                } label: {
-                    Image(systemName: isPlaceValid ? "checkmark.circle.fill" : "checkmark.circle")
-                        .font(.title3)
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(isPlaceValid ? .green : .secondary)
-                }
-                .disabled(isValidatingPlace)
-                .opacity(isValidatingPlace ? 0.5 : 1.0)
-                .accessibilityLabel("Validate place of birth")
-            }
+            .buttonStyle(.plain)
         }
         .confirmationDialog(
             "Reset Profile?",
@@ -204,29 +191,54 @@ struct ProfileView: View {
         } message: {
             Text("This will clear your saved profile details and validated location.")
         }
+        .onAppear {
+            if displayedMoonSign == "—" {
+                let existingMoon = state.lunarSignDeterministic
+                if !existingMoon.isEmpty, existingMoon != "—" { displayedMoonSign = existingMoon }
+            }
+            if displayedSunSign == "—", let signsResult {
+                displayedSunSign = signsResult.solarSign
+                displayedChineseSign = signsResult.chineseSign
+            }
+        }
     }
 
-    // MARK: - Actions
+    // MARK: - Helpers
+
+    private func formatCoordinateDM(_ value: Double, positive: String, negative: String) -> String {
+        let absValue = abs(value)
+        let degrees = Int(absValue)
+        let minutes = Int((absValue - Double(degrees)) * 60.0)
+        let direction = value >= 0 ? positive : negative
+        return "\(degrees)° \(minutes)′ \(direction)"
+    }
+
+    private func formatLatLonDM(latitude: Double, longitude: Double) -> String {
+        let lat = formatCoordinateDM(latitude, positive: "N", negative: "S")
+        let lon = formatCoordinateDM(longitude, positive: "E", negative: "W")
+        return "\(lat), \(lon)"
+    }
 
     private func invalidateValidatedPlaceAndDerivedResults() {
-        // Any edit invalidates the previous validation result and derived calculations.
         validatedMapItem = nil
         placeValidationError = nil
 
-        // Invalidate persisted validated location/timezone.
         state.birthLatitude = nil
         state.birthLongitude = nil
         state.birthTimeZoneIdentifier = nil
 
-        // Clear signs results (prevents stale Solar/Chinese from sticking around).
         signsResult = nil
         signsError = nil
         isLookingUpSigns = false
 
-        // Clear deterministic lunar display (optional; keeps UI consistent).
         state.lunarSignDeterministic = ""
         state.moonLongitudeDeterministic = nil
         state.lunarSignDeterministicError = nil
+
+        displayedMoonSign = "—"
+        displayedSunSign = "—"
+        displayedChineseSign = "—"
+        unifiedSignsError = nil
     }
 
     private func validatePlace() {
@@ -257,25 +269,35 @@ struct ProfileView: View {
                         validatedMapItem = first
                         isValidatingPlace = false
 
-                        // Persist validated coordinates/timezone for downstream UTC conversion.
                         let coord = first.location.coordinate
                         state.birthLatitude = coord.latitude
                         state.birthLongitude = coord.longitude
                         state.birthTimeZoneIdentifier = first.timeZone?.identifier
 
-                        // Keep the free-text place in sync with what was validated.
-                        state.placeOfBirth = query
+                        let city = first.name?.trimmingCharacters(in: .whitespacesAndNewlines)
 
-                        // Kick off deterministic lunar sign calc (Swiss Ephemeris MCP)
-                        Task { await state.refreshDeterministicLunarSign() }
+                        // iOS 26 deprecates `placemark`; prefer `address` / `addressRepresentations`.
+                        let country: String? = {
+                            if #available(iOS 26.0, *) {
+                                // Best-effort: derive country/region from the full address string.
+                                // (MapKit no longer provides structured country fields on MKMapItem.)
+                                let full = first.address?.fullAddress
+                                let last = full?.split(separator: ",").last.map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+                                return (last?.isEmpty == false) ? last : nil
+                            } else {
+                                return first.placemark.country?.trimmingCharacters(in: .whitespacesAndNewlines)
+                            }
+                        }()
 
-                        // Kick off Solar + Chinese lookup automatically (AI)
-                        startSolarAndChineseLookup()
+                        if let city, !city.isEmpty, let country, !country.isEmpty {
+                            state.placeOfBirth = "\(city), \(country)"
+                        } else if let city, !city.isEmpty {
+                            state.placeOfBirth = city
+                        } else {
+                            state.placeOfBirth = query
+                        }
 
-                        // Debug
-                        print("[PlaceValidation] query=\(query)")
-                        print("[PlaceValidation] lat=\(coord.latitude), lon=\(coord.longitude)")
-                        print("[PlaceValidation] tz=\(first.timeZone?.identifier ?? "nil")")
+                        startUnifiedSignsLookup()
                     } else {
                         placeValidationError = "No matching location found. Try a more specific format like ‘City, State/Region, Country’."
                         isValidatingPlace = false
@@ -289,45 +311,62 @@ struct ProfileView: View {
             }
         }
     }
-    
+
     private func resetProfile() {
-        // Reset persisted profile state
         state.resetProfile()
 
-        // Reset view-local UI state
         isLookingUpSigns = false
         signsResult = nil
         signsError = nil
         isValidatingPlace = false
         validatedMapItem = nil
         placeValidationError = nil
+
+        displayedMoonSign = "—"
+        displayedSunSign = "—"
+        displayedChineseSign = "—"
+        unifiedSignsError = nil
     }
 
-    private func startSolarAndChineseLookup() {
+    private func startUnifiedSignsLookup() {
         guard isPlaceValid else { return }
 
         isLookingUpSigns = true
         signsError = nil
         signsResult = nil
+        unifiedSignsError = nil
+
+        displayedMoonSign = "—"
+        displayedSunSign = "—"
+        displayedChineseSign = "—"
 
         Task {
             do {
-                let result = try await state.lookupAstrologySignsViaSwiftOpenAI()
+                async let moonInfo = state.computeDeterministicMoonInfo()
+                async let ai = state.lookupAstrologySignsViaSwiftOpenAI()
+
+                let (moon, aiResult) = try await (moonInfo, ai)
+
                 await MainActor.run {
-                    signsResult = result
+                    displayedMoonSign = moon.sign
+                    displayedSunSign = aiResult.solarSign
+                    displayedChineseSign = aiResult.chineseSign
+
+                    signsResult = aiResult
+                    state.lunarSignDeterministic = moon.sign
+                    state.moonLongitudeDeterministic = moon.longitude
+
                     isLookingUpSigns = false
                 }
             } catch {
                 await MainActor.run {
-                    signsError = error.localizedDescription
+                    unifiedSignsError = error.localizedDescription
                     isLookingUpSigns = false
                 }
             }
         }
     }
 }
-
-// MARK: - Previews
 
 #Preview("ProfileView") {
     NavigationStack {
@@ -339,31 +378,18 @@ struct ProfileView: View {
 private enum ProfileView_Previews {
     static func makePreviewState() -> AppState {
         let s = AppState()
-
-        // Populate with realistic sample values
         s.name = "Rahul Mahadik"
         s.gender = .male
-
-        // DOB: Jan 15, 2005 (use your UTC-stable helper)
         s.dob = AppState.dateFromYMDUTC(year: 2005, month: 1, day: 15)
-
-        // TOB: 03:42:00
         s.tobHour = 3
         s.tobMinute = 42
         s.tobSecond = 0
-
         s.placeOfBirth = "Mountain View, CA"
         s.birthTimeZoneIdentifier = "America/Los_Angeles"
         s.birthLatitude = 37.39261
         s.birthLongitude = -122.07978
-
-        // Make the signs section look “filled” in preview
         s.lunarSignDeterministic = "Pisces (Meena)"
         s.moonLongitudeDeterministic = 339.6269
-        s.lunarSignDeterministicError = nil
-        s.isRefreshingLunarSignDeterministic = false
-
         return s
     }
 }
-

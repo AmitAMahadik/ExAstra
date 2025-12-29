@@ -17,6 +17,8 @@ struct FocusCard: View {
         case .relationships: return "focus_relationships"
         case .wealth: return "focus_finances"
         case .health: return "focus_health"
+        case .travel: return "focus_travel"
+        case .education: return "focus_education"
         }
     }
     

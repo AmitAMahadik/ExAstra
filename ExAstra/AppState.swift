@@ -23,6 +23,8 @@ enum FocusArea: String, CaseIterable, Identifiable, Codable {
     case relationships = "Relationships"
     case wealth = "Wealth"
     case health = "Health"
+    case education = "Education"
+    case travel = "Travel"
 
     var id: String { rawValue }
     var systemHint: String {
@@ -31,6 +33,8 @@ enum FocusArea: String, CaseIterable, Identifiable, Codable {
         case .relationships: return "Focus on relationships, communication patterns, compatibility, and emotional well-being."
         case .wealth: return "Focus on finances, risk, long-term planning, and money habits."
         case .health: return "Focus on wellness routines, stress patterns, and sustainable health habits."
+        case .education: return "Focus on learning, skill-building, studies, certifications, and intellectual growth."
+        case .travel: return "Focus on journeys, movement, relocation, exploration, and changes in environment."
         }
     }
 }
@@ -38,7 +42,6 @@ enum FocusArea: String, CaseIterable, Identifiable, Codable {
 @MainActor
 final class AppState: ObservableObject {
     private var isRestoringProfile = false
-    
     // MARK: - Deterministic Lunar Sign via Swiss Ephemeris MCP
 
     private let swissMcp = SwissEphemerisMCPClient(
@@ -230,7 +233,26 @@ final class AppState: ObservableObject {
         Focus Area: \(focusArea?.rawValue ?? "Not selected")
         """
     }
+    
+    /// Computes the deterministic Moon info (sidereal sign + longitude) without mutating published state.
+    /// Useful when the UI needs to stage multiple results and apply them in unison.
+    func computeDeterministicMoonInfo() async throws -> (sign: String, longitude: Double) {
+        guard let lat = birthLatitude, let lon = birthLongitude else {
+            throw NSError(domain: "BirthTime", code: 10, userInfo: [
+                NSLocalizedDescriptionKey: "Validate place of birth to determine birth coordinates before calculating Lunar Sign."
+            ])
+        }
 
+        let birthUTC = try birthMomentUTC()
+
+        let moon = try await swissMcp.fetchMoonInfo(
+            datetimeUTC: birthUTC,
+            latitude: lat,
+            longitude: lon
+        )
+
+        return (moon.sign, moon.longitude)
+    }
     /// Deterministically computes the Lunar Sign (Moon sign) using the hosted Swiss Ephemeris MCP server.
     /// Requires validated birth timezone + coordinates.
     func refreshDeterministicLunarSign() async {

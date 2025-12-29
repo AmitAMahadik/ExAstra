@@ -211,7 +211,9 @@ final class FocusSummaryViewModel: ObservableObject {
 
             Output format:
             - Line 1: Overall theme
-            - Lines 2–4: Specific guidance in the form of a haiku
+            - Lines 2–4: Specific guidance for this week in the form of a haiku
+            - Line 5: Specific one-liner guidance on what to do this week
+            - Line 6: Specific one-liner guidance on what to avoid this week
             """
 
             do {
