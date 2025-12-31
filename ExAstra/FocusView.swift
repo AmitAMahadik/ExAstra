@@ -13,40 +13,86 @@ import UIKit
 struct FocusView: View {
     @EnvironmentObject private var state: AppState
     @StateObject private var vm = FocusSummaryViewModel()
+    @Namespace private var cardNamespace
+    @State private var expandedArea: FocusArea? = nil
+    @State private var isExpandedFlipped: Bool = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("The Week Ahead")
-                .font(.title2).bold()
-                .padding(.top, 20)
-                .padding(.horizontal, 16)
+        ZStack {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("The Week Ahead")
+                    .font(.title2).bold()
+                    .padding(.top, 20)
+                    .padding(.horizontal, 16)
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                ForEach(FocusArea.allCases) { area in
-                    FocusCard(
-                        area: area,
-                        isSelected: state.focusArea == area
-                    )
-                    .onTapGesture {
-                        withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-                            state.focusArea = area
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    ForEach(FocusArea.allCases) { area in
+                        ZStack {
+                            FocusCard(
+                                area: area,
+                                isSelected: state.focusArea == area,
+                                isFlipped: false,
+                                backText: vm.haikuText(for: area),
+                                isExpanded: false
+                            )
+                            .matchedGeometryEffect(
+                                id: area.rawValue,
+                                in: cardNamespace,
+                                isSource: expandedArea != area
+                            )
+                            .opacity(expandedArea == area ? 0 : 1)
+                        }
+                        .onTapGesture {
+                            lightHaptic()
+                            if expandedArea == area {
+                                collapseExpanded()
+                            } else {
+                                withAnimation(.interactiveSpring(response: 0.55, dampingFraction: 0.92, blendDuration: 0.15)) {
+                                    expand(area)
+                                }
+                            }
                         }
                     }
                 }
+                .padding(.top, 8)
+                .padding(.horizontal, 16)
             }
-            .padding(.top, 8)
-            .padding(.horizontal, 16)
 
-            FocusSummaryCard(
-                selected: state.focusArea,
-                summary: vm.summaryText,
-                isLoading: vm.isLoading,
-                errorText: vm.errorText
-            )
-            .padding(.top, 12)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 16)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            if let expanded = expandedArea {
+                Color.black
+                    .opacity(0.35)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        lightHaptic()
+                        collapseExpanded()
+                    }
+
+                GeometryReader { geo in
+                    FocusCard(
+                        area: expanded,
+                        isSelected: true,
+                        isFlipped: isExpandedFlipped,
+                        backText: vm.haikuText(for: expanded),
+                        isExpanded: true
+                    )
+                    .matchedGeometryEffect(
+                        id: expanded.rawValue,
+                        in: cardNamespace,
+                        isSource: true
+                    )
+                    .frame(
+                        width: geo.size.width - 36,
+                        height: geo.size.height * 0.70
+                    )
+                    .position(x: geo.size.width / 2, y: geo.size.height / 2)
+                    .zIndex(10)
+                    .onTapGesture {
+                        lightHaptic()
+                        collapseExpanded()
+                    }
+                }
+                .ignoresSafeArea()
+            }
         }
         .onChange(of: state.focusArea) { _, newValue in
             guard let area = newValue else { return }
@@ -58,6 +104,45 @@ struct FocusView: View {
                 chineseSign: state.chineseSign
             )
         }
+        .onChange(of: state.focusArea) { _, newValue in
+            if newValue == nil {
+                collapseExpanded()
+            }
+        }
+    }
+
+    private func expand(_ area: FocusArea) {
+        state.focusArea = area
+        expandedArea = area
+        isExpandedFlipped = false
+
+        Task { @MainActor in
+            // Small delay so the matched-geometry expansion reads as a tap before the flip.
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            withAnimation(.easeInOut(duration: 0.28)) {
+                isExpandedFlipped = true
+            }
+        }
+    }
+
+    private func collapseExpanded() {
+        // Flip back first, then collapse.
+        withAnimation(.easeInOut(duration: 0.22)) {
+            isExpandedFlipped = false
+        }
+
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 180_000_000)
+            withAnimation(.interactiveSpring(response: 0.55, dampingFraction: 0.92, blendDuration: 0.15)) {
+                expandedArea = nil
+            }
+        }
+    }
+    
+    private func lightHaptic() {
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.prepare()
+        generator.impactOccurred()
     }
 }
 
@@ -116,6 +201,7 @@ final class FocusSummaryViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var summaryText: String? = nil
     @Published var errorText: String? = nil
+    @Published private(set) var currentArea: FocusArea? = nil
 
     private let service: OpenAIService
 
@@ -156,6 +242,7 @@ final class FocusSummaryViewModel: ObservableObject {
     }
 
     func requestWeeklySummary(profile: String, focusArea: FocusArea, lunarSign: String, solarSign: String, chineseSign: String) {
+        currentArea = focusArea
         if let cached = cache[focusArea], !cached.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             // Cached → show immediately
             summaryText = cached
@@ -170,6 +257,17 @@ final class FocusSummaryViewModel: ObservableObject {
 
         // Enqueue a debounced request
         requestSubject.send(.init(profile: profile, focusArea: focusArea, lunarSign: lunarSign, solarSign: solarSign, chineseSign: chineseSign))
+    }
+
+    func haikuText(for area: FocusArea) -> String {
+        if area == currentArea {
+            if isLoading { return "Loading…" }
+            if let errorText, !errorText.isEmpty { return "Unable to load" }
+            let t = (summaryText ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            return t.isEmpty ? "—" : t
+        }
+        let cached = (cache[area] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return cached.isEmpty ? "—" : cached
     }
 
     private func runWeeklySummaryRequest(_ req: PendingRequest) {
