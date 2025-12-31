@@ -49,6 +49,8 @@ final class AppState: ObservableObject {
     )
 
     @Published var lunarSignDeterministic: String = "—"
+    @Published var solarSign: String = "—"
+    @Published var chineseSign: String = "—"
     @Published var moonLongitudeDeterministic: Double? = nil
     @Published var lunarSignDeterministicError: String? = nil
     @Published var isRefreshingLunarSignDeterministic: Bool = false

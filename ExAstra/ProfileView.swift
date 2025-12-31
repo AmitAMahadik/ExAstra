@@ -28,14 +28,23 @@ struct ProfileView: View {
     @State private var unifiedSignsError: String? = nil
 
     private var isPlaceValid: Bool {
-        validatedMapItem != nil
+        // Treat place as valid if we have persisted validated coordinates + timezone.
+        state.birthLatitude != nil && state.birthLongitude != nil && state.birthTimeZoneIdentifier != nil
     }
 
     var body: some View {
         Form {
             Section("Profile") {
-                TextField("Name", text: $state.name)
-                    .textContentType(.name)
+                HStack {
+                    Text("Name")
+                       // .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    TextField("", text: $state.name)
+                        .multilineTextAlignment(.trailing)
+                        .textContentType(.name)
+                }
 
                 Picker("Gender", selection: $state.gender) {
                     ForEach(Gender.allCases) { g in
@@ -82,14 +91,12 @@ struct ProfileView: View {
                     .disabled(isValidatingPlace)
                 }
 
-                if let validatedMapItem {
-                    let coordinate = validatedMapItem.location.coordinate
-
+                if let lat = state.birthLatitude, let lon = state.birthLongitude {
                     HStack(spacing: 8) {
                         Image(systemName: "globe")
                             .symbolRenderingMode(.hierarchical)
 
-                        Text(formatLatLonDM(latitude: coordinate.latitude, longitude: coordinate.longitude))
+                        Text(formatLatLonDM(latitude: lat, longitude: lon))
 
                         Image(systemName: "clock")
                             .symbolRenderingMode(.hierarchical)
@@ -108,7 +115,6 @@ struct ProfileView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-
             Section("Signs") {
                 LabeledContent {
                     Text(displayedMoonSign)
@@ -199,6 +205,15 @@ struct ProfileView: View {
             if displayedSunSign == "—", let signsResult {
                 displayedSunSign = signsResult.solarSign
                 displayedChineseSign = signsResult.chineseSign
+            }
+            // Auto-populate all three signs on app start if we already have a validated place
+            // (persisted coordinates + timezone) and nothing is displayed yet.
+            if isPlaceValid,
+               displayedMoonSign == "—",
+               displayedSunSign == "—",
+               displayedChineseSign == "—",
+               !isLookingUpSigns {
+                startUnifiedSignsLookup()
             }
         }
     }
@@ -352,9 +367,17 @@ struct ProfileView: View {
                     displayedSunSign = aiResult.solarSign
                     displayedChineseSign = aiResult.chineseSign
 
+                    // View-local
                     signsResult = aiResult
+
+                    // ✅ COMMIT TO APP STATE
                     state.lunarSignDeterministic = moon.sign
                     state.moonLongitudeDeterministic = moon.longitude
+                    state.solarSign = aiResult.solarSign
+                    state.chineseSign = aiResult.chineseSign
+
+                    // Persist so it survives app restarts
+                    state.saveProfile()
 
                     isLookingUpSigns = false
                 }

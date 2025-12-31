@@ -80,11 +80,17 @@ struct ChatView: View {
             }
             .padding(12)
         }
-        .navigationTitle("Chat")
+        .navigationTitle("Astro Chat")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             let focusHint = state.focusArea?.systemHint ?? "General guidance."
-            vm.seedIfNeeded(profile: state.profileSummary(), focusHint: focusHint)
+            vm.seedIfNeeded(
+                profile: state.profileSummary(),
+                focusHint: focusHint,
+                lunarSign: state.lunarSignDeterministic,
+                solarSign: state.solarSign,
+                chineseSign: state.chineseSign
+            )
         }
     }
 }

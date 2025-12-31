@@ -23,14 +23,9 @@ final class ChatViewModel: ObservableObject {
     private var profileContext: String = ""
     private var focusHint: String = ""
 
-   /* init(apiKey: String, organizationID: String? = nil) {
-        // SwiftOpenAI recommended init
-        if let organizationID, !organizationID.isEmpty {
-            self.service = OpenAIServiceFactory.service(apiKey: apiKey, organizationID: organizationID)
-        } else {
-            self.service = OpenAIServiceFactory.service(apiKey: apiKey)
-        }
-    }*/
+    private var lunarSign: String = "—"
+    private var solarSign: String = "—"
+    private var chineseSign: String = "—"
     
     // MARK: - Init
     init() {
@@ -48,15 +43,30 @@ final class ChatViewModel: ObservableObject {
     }
     
 
-    func seedIfNeeded(profile: String, focusHint: String) {
+    func seedIfNeeded(profile: String, focusHint: String, lunarSign: String, solarSign: String, chineseSign: String) {
         guard messages.isEmpty else { return }
 
         self.profileContext = profile
         self.focusHint = focusHint
+        self.lunarSign = lunarSign
+        self.solarSign = solarSign
+        self.chineseSign = chineseSign
+
+        let nameLine: String = {
+            // Extract the name from the profile summary if present
+            if let line = profile.split(separator: "\n").first(where: { $0.starts(with: "Name:") }) {
+                let fullName = line.replacingOccurrences(of: "Name:", with: "").trimmingCharacters(in: .whitespaces)
+                let firstName = fullName.split(separator: " ").first.map(String.init) ?? ""
+                if !firstName.isEmpty && firstName != "Unknown" {
+                    return "Hello, \(firstName)."
+                }
+            }
+            return "Hello."
+        }()
 
         messages.append(.init(role: .assistant, content: """
-        Hello. I’m your astrologer guide. Ask a specific question and I’ll tailor the answer to your profile and focus area.
-        """))
+\(nameLine) I’m your astrologer guide. Ask a specific question and I’ll tailor the answer to your profile and focus area.
+"""))
     }
 
     func send() async {
@@ -77,11 +87,17 @@ final class ChatViewModel: ObservableObject {
         do {
             let system = """
             You are a helpful astrologer assistant blending Western, Vedic, and Chinese astrology.
-            Provide thoughtful, actionable guidance. Be clear about uncertainty and avoid absolute claims.
+            Provide thoughtful, actionable guidance based on the Lunar, Sun, and chinese signs provided. 
+            Be clear about uncertainty and avoid absolute claims.
             Keep responses very concise but useful. Ask a clarifying question if the user’s query is ambiguous.
 
             User Profile:
             \(profileContext)
+
+            Signs:
+            - Lunar (Ephemeris): \(lunarSign)
+            - Sun: \(solarSign)
+            - Chinese: \(chineseSign)
 
             Focus Guidance:
             \(focusHint)
@@ -103,7 +119,7 @@ final class ChatViewModel: ObservableObject {
             // Choose a model you have enabled. SwiftOpenAI supports .gpt4o (and others).
             let params = ChatCompletionParameters(
                 messages: chat,
-                model: .gpt4omini
+                model: .gpt4o
             )
 
             // ✅ STREAM

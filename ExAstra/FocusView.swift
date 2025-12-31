@@ -5,7 +5,6 @@
 //  Created by Mahadik, Amit on 12/22/25.
 //
 
-// FocusView.swift
 import SwiftUI
 import SwiftOpenAI
 import Combine
@@ -53,7 +52,10 @@ struct FocusView: View {
             guard let area = newValue else { return }
             vm.requestWeeklySummary(
                 profile: state.profileSummary(),
-                focusArea: area
+                focusArea: area,
+                lunarSign: state.lunarSignDeterministic,
+                solarSign: state.solarSign,
+                chineseSign: state.chineseSign
             )
         }
     }
@@ -70,7 +72,7 @@ private struct FocusSummaryCard: View {
     }
 
     private var defaultSubtitle: String {
-        "Pick one of the four focus areas above to tailor your weekly predictions."
+        "Pick one of the focus areas above to tailor your weekly predictions."
     }
 
     var body: some View {
@@ -123,11 +125,13 @@ final class FocusSummaryViewModel: ObservableObject {
     private struct PendingRequest: Equatable {
         let profile: String
         let focusArea: FocusArea
+        let lunarSign: String
+        let solarSign: String
+        let chineseSign: String
     }
 
     private let requestSubject = PassthroughSubject<PendingRequest, Never>()
     private var cancellables = Set<AnyCancellable>()
-
 
     // MARK: - Init
     init() {
@@ -150,8 +154,8 @@ final class FocusSummaryViewModel: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
-    func requestWeeklySummary(profile: String, focusArea: FocusArea) {
+
+    func requestWeeklySummary(profile: String, focusArea: FocusArea, lunarSign: String, solarSign: String, chineseSign: String) {
         if let cached = cache[focusArea], !cached.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             // Cached → show immediately
             summaryText = cached
@@ -165,7 +169,7 @@ final class FocusSummaryViewModel: ObservableObject {
         }
 
         // Enqueue a debounced request
-        requestSubject.send(.init(profile: profile, focusArea: focusArea))
+        requestSubject.send(.init(profile: profile, focusArea: focusArea, lunarSign: lunarSign, solarSign: solarSign, chineseSign: chineseSign))
     }
 
     private func runWeeklySummaryRequest(_ req: PendingRequest) {
@@ -193,8 +197,11 @@ final class FocusSummaryViewModel: ObservableObject {
                 }
             }
 
+            print("Running weekly summary request for \(req.focusArea.rawValue)")
+            print("Profile details: \(req.profile)")
+
             let system = """
-            You are an astrologer assistant blending Western, Vedic, and Chinese astrology. Provide a short, practical weekly outlook.
+            You are an astrologer assistant blending Western, Vedic, and Chinese astrology. Provide a short, practical weekly outlook based on the Lunar, Sun, and chinese signs provided.
             Requirements:
             - Return 3–5 short lines (not long paragraphs).
             - Keep it grounded and actionable (focus on themes, timing, and suggestions).
@@ -205,6 +212,11 @@ final class FocusSummaryViewModel: ObservableObject {
 
             let user = """
             Create a concise prediction, in the form of a haiku, for the next 7 days focused on: \(req.focusArea.rawValue).
+
+            Signs:
+            - Lunar (Ephemeris): \(req.lunarSign)
+            - Sun: \(req.solarSign)
+            - Chinese: \(req.chineseSign)
 
             Profile details:
             \(req.profile)
