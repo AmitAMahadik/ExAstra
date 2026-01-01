@@ -5,7 +5,6 @@
 //  Created by Mahadik, Amit on 12/22/25.
 //
 
-
 // ChatViewModel.swift
 import Foundation
 import SwiftUI
@@ -65,8 +64,8 @@ final class ChatViewModel: ObservableObject {
         }()
 
         messages.append(.init(role: .assistant, content: """
-\(nameLine) I’m your astrologer guide. Ask a specific question and I’ll tailor the answer to your profile and focus area.
-"""))
+            \(nameLine) I’m your astrologer guide. Ask a specific question and I’ll tailor the answer to your profile and focus area.
+            """))
     }
 
     func send() async {
@@ -86,17 +85,14 @@ final class ChatViewModel: ObservableObject {
 
         do {
             let system = """
-            You are a helpful astrologer assistant blending Western, Vedic, and Chinese astrology.
-            Provide thoughtful, actionable guidance based on the Lunar, Sun, and chinese signs provided. 
-            Be clear about uncertainty and avoid absolute claims.
-            Keep responses very concise but useful. Ask a clarifying question if the user’s query is ambiguous.
+            \(ChatViewPrompts.system)
 
             User Profile:
             \(profileContext)
 
             Signs:
-            - Lunar (Ephemeris): \(lunarSign)
-            - Sun: \(solarSign)
+            - Lunar (Sidereal): \(lunarSign)
+            - Sun (Western): \(solarSign)
             - Chinese: \(chineseSign)
 
             Focus Guidance:
@@ -119,11 +115,11 @@ final class ChatViewModel: ObservableObject {
             // Choose a model you have enabled. SwiftOpenAI supports .gpt4o (and others).
             let params = ChatCompletionParameters(
                 messages: chat,
-                model: .gpt4o
+                model: .gpt4turbo
             )
 
             // ✅ STREAM
-            let stream = try await service.startStreamedChat(parameters: params)  //  [oai_citation:1‡GitHub](https://github.com/jamesrochabrun/SwiftOpenAI)
+            let stream = try await service.startStreamedChat(parameters: params)  //  //[oai_citation:1‡GitHub](https://github.com/jamesrochabrun/SwiftOpenAI)
             for try await chunk in stream {
                 let delta = chunk.choices?.first?.delta?.content ?? ""
                 guard !delta.isEmpty else { continue }
@@ -138,10 +134,10 @@ final class ChatViewModel: ObservableObject {
         } catch APIError.responseUnsuccessful(let description, let statusCode) {
             errorText = "Request failed (\(statusCode)): \(description)"
             // Optional: replace placeholder with error
-            messages[assistantIndex].content = "Sorry—something went wrong."
+            messages[assistantIndex].content = "Sorry — something went wrong."
         } catch {
             errorText = error.localizedDescription
-            messages[assistantIndex].content = "Sorry—something went wrong."
+            messages[assistantIndex].content = "Sorry — something went wrong."
         }
     }
 }

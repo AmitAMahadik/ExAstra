@@ -19,6 +19,7 @@ enum Gender: String, CaseIterable, Identifiable, Codable {
 }
 
 enum FocusArea: String, CaseIterable, Identifiable, Codable {
+    case purpose = "Purpose"
     case career = "Career"
     case relationships = "Relationships"
     case wealth = "Wealth"
@@ -29,6 +30,7 @@ enum FocusArea: String, CaseIterable, Identifiable, Codable {
     var id: String { rawValue }
     var systemHint: String {
         switch self {
+        case .purpose: return "Focus on personal values, passions, and life goals."
         case .career: return "Focus on career path, leadership, timing of opportunities, and work relationships."
         case .relationships: return "Focus on relationships, communication patterns, compatibility, and emotional well-being."
         case .wealth: return "Focus on finances, risk, long-term planning, and money habits."

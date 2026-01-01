@@ -17,45 +17,69 @@ struct FocusView: View {
     @State private var expandedArea: FocusArea? = nil
     @State private var isExpandedFlipped: Bool = false
 
+    private var gridColumns: [GridItem] {
+        [GridItem(.flexible()), GridItem(.flexible())]
+    }
+
+    private var gridAreas: [FocusArea] {
+        FocusArea.allCases.filter { $0 != .purpose }
+    }
+
+    @ViewBuilder
+    private func focusCardCell(_ area: FocusArea) -> some View {
+        ZStack {
+            FocusCard(
+                area: area,
+                isSelected: state.focusArea == area,
+                isFlipped: false,
+                backText: vm.haikuText(for: area),
+                isExpanded: false
+            )
+            .matchedGeometryEffect(
+                id: area.rawValue,
+                in: cardNamespace,
+                isSource: expandedArea != area
+            )
+            .opacity(expandedArea == area ? 0 : 1)
+        }
+        .onTapGesture {
+            lightHaptic()
+            if expandedArea == area {
+                collapseExpanded()
+            } else {
+                withAnimation(.interactiveSpring(response: 0.55, dampingFraction: 0.92, blendDuration: 0.15)) {
+                    expand(area)
+                }
+            }
+        }
+    }
+
+    private var purposeTopCard: some View {
+        HStack {
+            Spacer()
+            focusCardCell(.purpose)
+                .frame(maxWidth: 220) // keep visual balance above grid
+            Spacer()
+        }
+        .padding(.top, 8)
+        .padding(.bottom, 12)
+    }
+
+    private var focusGrid: some View {
+        LazyVGrid(columns: gridColumns, spacing: 12) {
+            ForEach(gridAreas) { area in
+                focusCardCell(area)
+            }
+        }
+        .padding(.top, 8)
+        .padding(.horizontal, 16)
+    }
+
     var body: some View {
         ZStack {
             VStack(alignment: .leading, spacing: 0) {
-                Text("The Week Ahead")
-                    .font(.title2).bold()
-                    .padding(.top, 20)
-                    .padding(.horizontal, 16)
-
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    ForEach(FocusArea.allCases) { area in
-                        ZStack {
-                            FocusCard(
-                                area: area,
-                                isSelected: state.focusArea == area,
-                                isFlipped: false,
-                                backText: vm.haikuText(for: area),
-                                isExpanded: false
-                            )
-                            .matchedGeometryEffect(
-                                id: area.rawValue,
-                                in: cardNamespace,
-                                isSource: expandedArea != area
-                            )
-                            .opacity(expandedArea == area ? 0 : 1)
-                        }
-                        .onTapGesture {
-                            lightHaptic()
-                            if expandedArea == area {
-                                collapseExpanded()
-                            } else {
-                                withAnimation(.interactiveSpring(response: 0.55, dampingFraction: 0.92, blendDuration: 0.15)) {
-                                    expand(area)
-                                }
-                            }
-                        }
-                    }
-                }
-                .padding(.top, 8)
-                .padding(.horizontal, 16)
+                purposeTopCard
+                focusGrid
             }
 
             if let expanded = expandedArea {
@@ -261,7 +285,7 @@ final class FocusSummaryViewModel: ObservableObject {
 
     func haikuText(for area: FocusArea) -> String {
         if area == currentArea {
-            if isLoading { return "Loading…" }
+            if isLoading { return "Reaching for the stars…" }
             if let errorText, !errorText.isEmpty { return "Unable to load" }
             let t = (summaryText ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             return t.isEmpty ? "—" : t
@@ -298,33 +322,15 @@ final class FocusSummaryViewModel: ObservableObject {
             print("Running weekly summary request for \(req.focusArea.rawValue)")
             print("Profile details: \(req.profile)")
 
-            let system = """
-            You are an astrologer assistant blending Western, Vedic, and Chinese astrology. Provide a short, practical weekly outlook based on the Lunar, Sun, and chinese signs provided.
-            Requirements:
-            - Return 3–5 short lines (not long paragraphs).
-            - Keep it grounded and actionable (focus on themes, timing, and suggestions).
-            - Do not ask questions.
-            - Do not include disclaimers.
-            - Do not mention that you are an AI.
-            """
+            let system = FocusViewPrompts.system
 
-            let user = """
-            Create a concise prediction, in the form of a haiku, for the next 7 days focused on: \(req.focusArea.rawValue).
-
-            Signs:
-            - Lunar (Ephemeris): \(req.lunarSign)
-            - Sun: \(req.solarSign)
-            - Chinese: \(req.chineseSign)
-
-            Profile details:
-            \(req.profile)
-
-            Output format:
-            - Line 1: Overall theme
-            - Lines 2–4: Specific guidance for this week in the form of a haiku
-            - Line 5: Specific one-liner guidance on what to do this week
-            - Line 6: Specific one-liner guidance on what to avoid this week
-            """
+            let user = FocusViewPrompts.user(
+                focusArea: req.focusArea.rawValue,
+                lunarSign: req.lunarSign,
+                solarSign: req.solarSign,
+                chineseSign: req.chineseSign,
+                profile: req.profile
+            )
 
             do {
                 let params = ChatCompletionParameters(
