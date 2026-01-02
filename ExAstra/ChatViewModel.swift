@@ -85,19 +85,21 @@ final class ChatViewModel: ObservableObject {
 
         do {
             let system = """
-            \(ChatViewPrompts.system)
+\(ChatViewPrompts.system)
 
-            User Profile:
-            \(profileContext)
+Current date: \(DateFormatter.exAstraISO.string(from: Date()))
 
-            Signs:
-            - Lunar (Sidereal): \(lunarSign)
-            - Sun (Western): \(solarSign)
-            - Chinese: \(chineseSign)
+User Profile:
+\(profileContext)
 
-            Focus Guidance:
-            \(focusHint)
-            """
+Signs:
+- Lunar (Sidereal): \(lunarSign)
+- Sun (Western): \(solarSign)
+- Chinese: \(chineseSign)
+
+Focus Guidance:
+\(focusHint)
+"""
 
             var chat: [ChatCompletionParameters.Message] = [
                 .init(role: .system, content: .text(system))
@@ -140,4 +142,15 @@ final class ChatViewModel: ObservableObject {
             messages[assistantIndex].content = "Sorry — something went wrong."
         }
     }
+}
+
+private extension DateFormatter {
+    static let exAstraISO: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone.current
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
 }

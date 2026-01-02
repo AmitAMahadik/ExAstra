@@ -61,14 +61,6 @@ struct ChatView: View {
                         isInputFocused = false
                         Task { await vm.send() }
                     }
-                    .toolbar {
-                        ToolbarItemGroup(placement: .keyboard) {
-                            Spacer()
-                            Button("Done") {
-                                isInputFocused = false
-                            }
-                        }
-                    }
                 Button {
                     isInputFocused = false
                     Task { await vm.send() }
