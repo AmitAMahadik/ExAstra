@@ -18,7 +18,7 @@ final class ChatViewModel: ObservableObject {
     @Published var isSending: Bool = false
     @Published var errorText: String? = nil
 
-    private let service: OpenAIService
+    private let service: OpenAIService?
     private var profileContext: String = ""
     private var focusHint: String = ""
 
@@ -34,11 +34,13 @@ final class ChatViewModel: ObservableObject {
 
         print("API Key exists:", !(key ?? "").isEmpty)
 
-        guard let apiKey = key, !apiKey.isEmpty else {
-            fatalError("❌ OPENAI_API_KEY missing. Check Secrets.xcconfig + Info.plist")
+        if let apiKey = key, !apiKey.isEmpty {
+            self.service = OpenAIServiceFactory.service(apiKey: apiKey)
+        } else {
+            // No API key available locally; run in degraded mode where AI features are disabled.
+            self.service = nil
+            print("Warning: OPENAI_API_KEY not set — AI features disabled for this build.")
         }
-
-        self.service = OpenAIServiceFactory.service(apiKey: apiKey)
     }
     
 
@@ -117,7 +119,7 @@ Focus Guidance:
             // Choose a model you have enabled. SwiftOpenAI supports .gpt4o (and others).
             let params = ChatCompletionParameters(
                 messages: chat,
-                model: .gpt4turbo
+                model: .gpt5Mini
             )
 
             // ✅ STREAM

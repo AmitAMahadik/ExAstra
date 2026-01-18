@@ -227,7 +227,7 @@ final class FocusSummaryViewModel: ObservableObject {
     @Published var errorText: String? = nil
     @Published private(set) var currentArea: FocusArea? = nil
 
-    private let service: OpenAIService
+    private let service: OpenAIService?
 
     private var cache: [FocusArea: String] = [:]
     private var inFlightTask: Task<Void, Never>? = nil
@@ -251,11 +251,12 @@ final class FocusSummaryViewModel: ObservableObject {
 
         print("API Key exists:", !(key ?? "").isEmpty)
 
-        guard let apiKey = key, !apiKey.isEmpty else {
-            fatalError("❌ OPENAI_API_KEY missing. Check Secrets.xcconfig + Info.plist")
+        if let apiKey = key, !apiKey.isEmpty {
+            self.service = OpenAIServiceFactory.service(apiKey: apiKey)
+        } else {
+            self.service = nil
+            print("Warning: OPENAI_API_KEY not set — AI features disabled for this build.")
         }
-
-        self.service = OpenAIServiceFactory.service(apiKey: apiKey)
 
         requestSubject
             .debounce(for: .milliseconds(250), scheduler: RunLoop.main)
@@ -344,11 +345,11 @@ final class FocusSummaryViewModel: ObservableObject {
                 // Stream response
                 self.summaryText = ""
 
-                let stream = try await self.service.startStreamedChat(parameters: params)
+                let stream = try await self.service?.startStreamedChat(parameters: params)
                 var lastUIUpdateTime = Date.distantPast
                 var buffer = ""
 
-                for try await chunk in stream {
+                for try await chunk in stream ?? [] {
                     if Task.isCancelled { return }
 
                     let delta = chunk.choices?.first?.delta?.content ?? ""
