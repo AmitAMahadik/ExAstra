@@ -1,0 +1,21 @@
+App Review Notes for ExAstra
+
+Short description:
+ExAstra is a personal astrology assistant that uses the OpenAI API and a deterministic Swiss Ephemeris MCP service to provide astrological summaries and guidance. The app uses user-provided birth data (name, DOB, time of birth, place of birth) to compute astrological signs and tailored summaries.
+
+What data is sent to external services:
+- OpenAI: prompt text containing the user's non-sensitive profile data (name, DOB, time-of-birth, place-of-birth, and coordinates when available) for the purpose of generating astrology summaries. No contacts, photos, or other device data are sent.
+- Swiss Ephemeris MCP: birth datetime and coordinates are sent to obtain deterministic Moon ephemeris data.
+
+How keys are stored:
+- The OpenAI API key is not embedded in the app binary. Secrets.xcconfig is used locally and excluded from source control. For CI builds, a secure secret store should be used.
+
+Why the app requires network access:
+- To make calls to OpenAI for generative astrology text and to the hosted Swiss Ephemeris MCP service for deterministic lunar calculations.
+
+Contact for reviewer:
+Amit Mahadik
+email: <your-email@example.com>
+
+Notes:
+- If you need a demo account or test key for review, I can provide a temporary key or a build with stubbed network responses. Please contact me via the email above.
