@@ -18,7 +18,8 @@ final class ChatViewModel: ObservableObject {
     @Published var isSending: Bool = false
     @Published var errorText: String? = nil
 
-    private let service: OpenAIService?
+    private var service: OpenAIService?
+
     private var profileContext: String = ""
     private var focusHint: String = ""
 
@@ -28,21 +29,29 @@ final class ChatViewModel: ObservableObject {
     
     // MARK: - Init
     init() {
-        let key = Bundle.main.object(
-            forInfoDictionaryKey: "OPENAI_API_KEY"
-        ) as? String
-
-        print("API Key exists:", !(key ?? "").isEmpty)
-
-        if let apiKey = key, !apiKey.isEmpty {
+        // Try to initialize service from UserDefaults first (runtime setup), otherwise fall back to Info.plist.
+        let userKey = UserDefaults.standard.string(forKey: "OPENAI_API_KEY")
+        if let apiKey = userKey, !apiKey.isEmpty {
             self.service = OpenAIServiceFactory.service(apiKey: apiKey)
         } else {
-            // No API key available locally; run in degraded mode where AI features are disabled.
-            self.service = nil
-            print("Warning: OPENAI_API_KEY not set — AI features disabled for this build.")
+            let bundleKey = Bundle.main.object(forInfoDictionaryKey: "OPENAI_API_KEY") as? String
+            if let apiKey = bundleKey, !apiKey.isEmpty {
+                self.service = OpenAIServiceFactory.service(apiKey: apiKey)
+            } else {
+                self.service = nil
+                print("Warning: OPENAI_API_KEY not set — AI features disabled for this build.")
+            }
         }
     }
     
+    private func ensureService() {
+        if service != nil { return }
+        if let apiKey = UserDefaults.standard.string(forKey: "OPENAI_API_KEY"), !apiKey.isEmpty {
+            service = OpenAIServiceFactory.service(apiKey: apiKey)
+        } else if let bundleKey = Bundle.main.object(forInfoDictionaryKey: "OPENAI_API_KEY") as? String, !bundleKey.isEmpty {
+            service = OpenAIServiceFactory.service(apiKey: bundleKey)
+        }
+    }
 
     func seedIfNeeded(profile: String, focusHint: String, lunarSign: String, solarSign: String, chineseSign: String) {
         guard messages.isEmpty else { return }
@@ -119,8 +128,17 @@ Focus Guidance:
             // Choose a model you have enabled. SwiftOpenAI supports .gpt4o (and others).
             let params = ChatCompletionParameters(
                 messages: chat,
-                model: .gpt5Mini
+                model: .gpt4turbo
             )
+
+            // Ensure service is initialized (supports runtime setup via Profile -> API Key)
+            ensureService()
+            guard let service = service else {
+                let msg = "AI features are disabled for this build. No API key configured."
+                errorText = msg
+                messages[assistantIndex].content = "Sorry — AI responses are not available in this build."
+                return
+            }
 
             // ✅ STREAM
             let stream = try await service.startStreamedChat(parameters: params)  //  //[oai_citation:1‡GitHub](https://github.com/jamesrochabrun/SwiftOpenAI)

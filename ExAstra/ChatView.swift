@@ -43,6 +43,15 @@ struct ChatView: View {
                 }
             }
 
+            // Show an informational banner when AI is unavailable
+            if !state.isAIAvailable {
+                Text("AI features are disabled — configure OPENAI_API_KEY to enable chat.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+                    .padding(.top, 6)
+            }
+
             Divider()
 
             HStack(spacing: 10) {
@@ -52,6 +61,11 @@ struct ChatView: View {
                     .focused($isInputFocused)
                     .submitLabel(.send)
                     .onSubmit {
+                        guard state.isAIAvailable else {
+                            isInputFocused = false
+                            return
+                        }
+
                         let text = vm.draft.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard !text.isEmpty, !vm.isSending else {
                             isInputFocused = false
@@ -61,14 +75,16 @@ struct ChatView: View {
                         isInputFocused = false
                         Task { await vm.send() }
                     }
+                    .disabled(!state.isAIAvailable)
                 Button {
+                    guard state.isAIAvailable else { return }
                     isInputFocused = false
                     Task { await vm.send() }
                 } label: {
                     if vm.isSending { ProgressView() }
                     else { Text("Send") }
                 }
-                .disabled(vm.isSending || vm.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(vm.isSending || vm.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !state.isAIAvailable)
             }
             .padding(12)
         }

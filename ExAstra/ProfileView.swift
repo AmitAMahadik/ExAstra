@@ -215,6 +215,8 @@ struct ProfileView: View {
                !isLookingUpSigns {
                 startUnifiedSignsLookup()
             }
+
+            // NOTE: API Key is provided locally via Secrets.xcconfig; removed in-app key UI.
         }
     }
 

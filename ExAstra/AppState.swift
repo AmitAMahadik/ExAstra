@@ -57,6 +57,9 @@ final class AppState: ObservableObject {
     @Published var lunarSignDeterministicError: String? = nil
     @Published var isRefreshingLunarSignDeterministic: Bool = false
 
+    // AI availability flag (derived from whether an OpenAI API key is available)
+    @Published var isAIAvailable: Bool = false
+
     @Published var name: String = "" {
         didSet { guard !isRestoringProfile else { return }; saveProfile() }
     }
@@ -136,6 +139,19 @@ final class AppState: ObservableObject {
 
     init() {
         loadProfile()
+
+        // Initialize AI availability robustly
+        updateAIAvailability()
+
+        // Observe Key changes (if AppState.updateAPIKey is used elsewhere)
+        NotificationCenter.default.addObserver(forName: .openAIKeyDidChange, object: nil, queue: .main) { [weak self] _ in
+            guard let self = self else { return }
+            // Schedule the main-actor-isolated update asynchronously to avoid calling a @MainActor method
+            // from this synchronous nonisolated closure.
+            Task { @MainActor in
+                self.updateAIAvailability()
+            }
+        }
     }
 
     func saveProfile() {
@@ -335,6 +351,29 @@ final class AppState: ObservableObject {
     }
 }
 
+// MARK: - API Key helpers
+extension AppState {
+    /// Persist or clear the OpenAI API key and update local availability state.
+    /// Posts `.openAIKeyDidChange` via NotificationCenter to notify other components.
+    func updateAPIKey(_ key: String?) {
+        let trimmed = key?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let k = trimmed, !k.isEmpty {
+            UserDefaults.standard.set(k, forKey: "OPENAI_API_KEY")
+            isAIAvailable = true
+        } else {
+            UserDefaults.standard.removeObject(forKey: "OPENAI_API_KEY")
+            isAIAvailable = false
+        }
+
+        NotificationCenter.default.post(name: .openAIKeyDidChange, object: nil)
+    }
+}
+
+extension Notification.Name {
+    static let openAIKeyDidChange = Notification.Name("openAIKeyDidChange")
+}
+
 // MARK: - AI Astrology lookups (Solar, Lunar, Chinese)
 
 struct AstrologySignsAIResult: Codable, Equatable {
@@ -528,5 +567,35 @@ extension AppState {
         comps.second = second
 
         return cal.date(from: comps) ?? Date(timeIntervalSince1970: 0)
+    }
+}
+
+private extension AppState {
+    func updateAIAvailability() {
+        // Priority: runtime UserDefaults -> Build-time Info.plist -> Environment variable
+        let runtimeKey = UserDefaults.standard.string(forKey: "OPENAI_API_KEY")?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let bundleKey = Bundle.main.object(forInfoDictionaryKey: "OPENAI_API_KEY") as? String
+        let envKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"]
+
+        let chosen: String? = {
+            if let r = runtimeKey, !r.isEmpty { return r }
+            if let b = bundleKey, !b.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, b != "$(OPENAI_API_KEY)" { return b }
+            if let e = envKey, !e.isEmpty { return e }
+            return nil
+        }()
+
+        if let k = chosen, !k.isEmpty {
+            isAIAvailable = true
+            let masked = String(k.prefix(6)) + "…" + String(k.suffix(6))
+            let source: String
+            if runtimeKey != nil { source = "UserDefaults" }
+            else if bundleKey != nil && bundleKey == chosen { source = "Info.plist" }
+            else if envKey != nil { source = "Env" }
+            else { source = "Unknown" }
+            print("[AppState] OpenAI key loaded (masked): \(masked) — source: \(source)")
+        } else {
+            isAIAvailable = false
+            print("[AppState] OpenAI key not found in UserDefaults, Info.plist, or environment.")
+        }
     }
 }

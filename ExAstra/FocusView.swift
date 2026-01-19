@@ -227,7 +227,7 @@ final class FocusSummaryViewModel: ObservableObject {
     @Published var errorText: String? = nil
     @Published private(set) var currentArea: FocusArea? = nil
 
-    private let service: OpenAIService?
+    private var service: OpenAIService?
 
     private var cache: [FocusArea: String] = [:]
     private var inFlightTask: Task<Void, Never>? = nil
@@ -253,7 +253,10 @@ final class FocusSummaryViewModel: ObservableObject {
 
         if let apiKey = key, !apiKey.isEmpty {
             self.service = OpenAIServiceFactory.service(apiKey: apiKey)
+        } else if let stored = UserDefaults.standard.string(forKey: "OPENAI_API_KEY"), !stored.isEmpty {
+            self.service = OpenAIServiceFactory.service(apiKey: stored)
         } else {
+            // No API key available; run in degraded mode.
             self.service = nil
             print("Warning: OPENAI_API_KEY not set — AI features disabled for this build.")
         }
@@ -342,14 +345,21 @@ final class FocusSummaryViewModel: ObservableObject {
                     model: .gpt4turbo
                 )
 
-                // Stream response
-                self.summaryText = ""
+                // Ensure service is present (runtime key may be stored in UserDefaults)
+                self.ensureService()
+                guard let service = self.service else {
+                    if !Task.isCancelled {
+                        self.errorText = "AI features are disabled for this build. No API key configured."
+                        self.isLoading = false
+                    }
+                    return
+                }
 
-                let stream = try await self.service?.startStreamedChat(parameters: params)
+                let stream = try await service.startStreamedChat(parameters: params)
                 var lastUIUpdateTime = Date.distantPast
                 var buffer = ""
 
-                for try await chunk in stream ?? [] {
+                for try await chunk in stream {
                     if Task.isCancelled { return }
 
                     let delta = chunk.choices?.first?.delta?.content ?? ""
@@ -393,6 +403,17 @@ final class FocusSummaryViewModel: ObservableObject {
                     self.errorText = error.localizedDescription
                 }
             }
+        }
+    }
+
+    private func ensureService() {
+        if service != nil { return }
+        if let apiKey = UserDefaults.standard.string(forKey: "OPENAI_API_KEY"), !apiKey.isEmpty {
+            service = OpenAIServiceFactory.service(apiKey: apiKey)
+            return
+        }
+        if let bundleKey = Bundle.main.object(forInfoDictionaryKey: "OPENAI_API_KEY") as? String, !bundleKey.isEmpty {
+            service = OpenAIServiceFactory.service(apiKey: bundleKey)
         }
     }
 
